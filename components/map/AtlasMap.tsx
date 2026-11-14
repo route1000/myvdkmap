@@ -46,11 +46,14 @@ export default function AtlasMap() {
      canvasContextAttributes:{antialias:true},fadeDuration:150});
    } catch {setFallback(true);window.dispatchEvent(new Event('map:ready'));return;}
    mapRef.current=map;
+   const hover=new GL.Popup({closeButton:false,closeOnClick:false,offset:12});
+   map.on('mouseout',()=>hover.remove());
    map.on('load',()=>{
     if(!live)return;map.setTerrain({source:'terrain',exaggeration:1.15});setReady(true);window.dispatchEvent(new Event('map:ready'));
     map.addSource('events',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map.addLayer({id:'atlas-events',type:'circle',source:'events',paint:{'circle-radius':6,'circle-color':['get','color'],'circle-stroke-color':dark?'#171719':'#ffffff','circle-stroke-width':2}});
     map.on('click',e=>{
+     hover.remove();
      if(document.documentElement.dataset.mapPick!==undefined){window.dispatchEvent(new CustomEvent('map:click',{detail:{lat:e.lngLat.lat,lng:e.lngLat.lng}}));return;}
      const layers=['atlas-events',...[...loaded.current].map(k=>`${k}-${map.getPitch()>10?'volume':'flat'}`)].filter(k=>!!map.getLayer(k));
      const hit=map.queryRenderedFeatures(e.point,{layers})[0];
@@ -59,8 +62,11 @@ export default function AtlasMap() {
      current.current.setSelected(null);
     });
     map.on('mousemove',e=>{
-     const layers=[...loaded.current].map(k=>`${k}-${map.getPitch()>10?'volume':'flat'}`).filter(k=>!!map.getLayer(k));
-     map.getCanvas().style.cursor=document.documentElement.dataset.mapPick!==undefined?'crosshair':map.queryRenderedFeatures(e.point,{layers}).length?'pointer':'';
+     const layers=['atlas-events',...[...loaded.current].map(k=>`${k}-${map.getPitch()>10?'volume':'flat'}`)].filter(k=>!!map.getLayer(k));
+     const hit=map.queryRenderedFeatures(e.point,{layers})[0];
+     const picking=document.documentElement.dataset.mapPick!==undefined;
+     map.getCanvas().style.cursor=picking?'crosshair':hit?'pointer':'';
+     if(hit&&!picking){const p=hit.properties,value=Number(p[current.current.metric]??-1);hover.setLngLat(e.lngLat).setText(`${p.address||p.label||'Здание'}${current.current.metric==='none'?'':value>=0?` · ${Math.round(value)}/100`:' · нет данных'}`).addTo(map);}else hover.remove();
     });
    });
    map.on('error',e=>{ if(!map.loaded() && /WebGL|context|GPU/i.test(e.error?.message??''))setFallback(true); });
