@@ -1,15 +1,8 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+
 import { Providers } from "@/components/providers";
 import { Splash } from "@/components/Splash";
 import "./globals.css";
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-jetbrains",
-  weight: ["400", "600", "700", "800"],
-  display: "swap",
-});
 
 const DESCRIPTION =
   "Карта Владивостока для жителей: проблемы двора и дома, ремонты и отключения рядом, квитанции ЖКХ простыми словами.";
@@ -32,7 +25,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru" suppressHydrationWarning className={jetbrains.variable}>
+    <html lang="ru" suppressHydrationWarning>
       <body>
         <Providers>
           {children}

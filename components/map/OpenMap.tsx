@@ -80,7 +80,7 @@ export default function OpenMap() {
     };
   }, [api, resolvedTheme]);
 
-  const { districts, shapes, scene, layers, complexes, issues, works, insets } =
+  const { districts, shapes, scene, layers, complexes, issues, works, insets, health } =
     state;
   useEffect(() => {
     if (!api) return;
@@ -200,6 +200,11 @@ export default function OpenMap() {
             );
         });
     }
+    if (layers.health) for (const h of health) {
+      const circle = L.circleMarker([h.lat, h.lng], { radius: h.id === scene.buildingId ? 10 : 5, weight: 1, color: "#171717", fillColor: h.level === "good" ? "#8eb99b" : h.level === "warn" ? "#b78e7d" : "#ed5e51", fillOpacity: 0.9 }).addTo(group);
+      const label = document.createElement("span"); label.textContent = `${h.address}: ${h.score}/100`;
+      circle.bindTooltip(label).on("click", () => navigate(houseHref(h.id)));
+    }
     scene.buildings?.forEach((b) =>
       marker(
         b,
@@ -212,7 +217,7 @@ export default function OpenMap() {
     return () => {
       group.remove();
     };
-  }, [api, districts, shapes, scene, layers, complexes, issues, works, router]);
+  }, [api, districts, shapes, scene, layers, complexes, issues, works, router, health]);
 
   useEffect(() => {
     if (!api) return;
@@ -280,7 +285,7 @@ export default function OpenMap() {
             paddingBottomRight: [insets.right + 25, insets.bottom + 25],
             animate: !matchMedia("(prefers-reduced-motion: reduce)").matches,
           });
-          router.push("/");
+          router.push("/#map");
         }}
       >
         <LocateFixed size={20} />

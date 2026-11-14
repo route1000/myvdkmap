@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 // Icons match the rail and the map markers; the tile takes the layer's map colour when it is on.
 const ROWS: { key: keyof MapLayers; label: string; hint: string; Icon: LucideIcon; tile: string }[] = [
+  { key: "health", label: "Состояние домов", hint: "Оценка по данным обращений", Icon: Building2, tile: "bg-turquoise text-background" },
   { key: "complexes", label: "ЖК", hint: "Жилые комплексы", Icon: Building2, tile: "bg-foreground text-background" },
   { key: "issues", label: "Проблемы", hint: "Жалобы жителей", Icon: TriangleAlert, tile: "bg-coral text-white" },
   { key: "works", label: "Работы", hint: "Ремонты и отключения", Icon: Construction, tile: "bg-work text-foreground dark:text-background" },

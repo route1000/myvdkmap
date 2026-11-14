@@ -8,9 +8,9 @@ export function CityNavLink({ href, onClick, ...props }: ComponentProps<typeof L
   function navigate(event: MouseEvent<HTMLAnchorElement>) {
     const plain = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
     if (plain && location.pathname === "/") {
-      if (href === "/#map") {
+      if (href === "/#map" || href === "/#home") {
         event.preventDefault();
-        location.hash = "map";
+        location.hash = href === "/#home" ? "home" : "map";
         return;
       }
       if (href === "/" && location.hash === "#map") {

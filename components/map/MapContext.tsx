@@ -29,7 +29,10 @@ export interface MapScene {
   focus?: { lat: number; lng: number };
 }
 
+export interface HealthMarker { id: string; address: string; lat: number; lng: number; score: number; level: string; districtId: string; }
+
 export interface MapLayers {
+  health: boolean;
   complexes: boolean;
   issues: boolean;
   works: boolean;
@@ -49,6 +52,8 @@ interface MapContextValue {
   works: CityWorkDTO[];
   /** Open issues; refetched from `/api/issues` on the window event `issues:changed`. */
   issues: MapIssueDTO[];
+  health: HealthMarker[];
+  setHealth: React.Dispatch<React.SetStateAction<HealthMarker[]>>;
   shapes: Record<string, DistrictShape>;
   scene: MapScene;
   setScene: (scene: MapScene) => void;
@@ -84,7 +89,8 @@ const isOpen = (i: MapIssueDTO) => i.status !== "resolved";
 export function MapProvider({ data, children }: { data: MapData; children: React.ReactNode }) {
   const [issues, setIssues] = useState(data.issues);
   const [scene, setScene] = useState<MapScene>({ level: "city" });
-  const [layers, setLayers] = useState<MapLayers>({ complexes: true, issues: true, works: true });
+  const [health, setHealth] = useState<HealthMarker[]>([]);
+  const [layers, setLayers] = useState<MapLayers>({ health: false, complexes: true, issues: true, works: true });
   const [override, setInsets] = useState<Partial<MapInsets>>({});
   const viewport = useSyncExternalStore(subscribeResize, viewportSnapshot, () => "");
 
@@ -119,6 +125,7 @@ export function MapProvider({ data, children }: { data: MapData; children: React
 
   const value = useMemo<MapContextValue>(
     () => ({
+      health, setHealth,
       districts: data.districts,
       complexes: data.complexes,
       works: data.works,
@@ -131,7 +138,7 @@ export function MapProvider({ data, children }: { data: MapData; children: React
       insets,
       setInsets,
     }),
-    [data.districts, data.complexes, data.works, issues, shapes, scene, layers, insets],
+    [data.districts, data.complexes, data.works, issues, shapes, scene, layers, insets, health],
   );
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 }

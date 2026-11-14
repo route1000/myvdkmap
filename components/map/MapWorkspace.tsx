@@ -13,11 +13,11 @@ const OpenMap = dynamic(() => import("./OpenMap"), { ssr: false });
 export function MapWorkspace({ className }: { className?: string }) {
   const [fallback, setFallback] = useState(!process.env.NEXT_PUBLIC_2GIS_KEY);
   const useFallback = useCallback(() => setFallback(true), []);
-  const { districts, scene } = useMap();
+  const { districts, scene, layers } = useMap();
   const district = districts.find((d) => d.id === scene.districtId);
   return (
     <div className={cn("fixed inset-0 overflow-hidden", className)}>
-      {fallback ? <OpenMap /> : <MapView onUnavailable={useFallback} />}
+      {fallback || layers.health ? <OpenMap /> : <MapView onUnavailable={useFallback} />}
       <div className="map-topline">
         <span>
           <MapPin size={13} className="text-turquoise" />

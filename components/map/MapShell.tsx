@@ -10,6 +10,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useFontScale } from "@/components/cabinet/shared";
+import { AnalyticsPanel } from "@/components/analytics/AnalyticsPanel";
 import { CityHeader } from "./CityHeader";
 import { MapWorkspace } from "@/components/map/MapWorkspace";
 import { CityMapPanel } from "@/components/panel/CityMapPanel";
@@ -34,8 +35,9 @@ const subscribeMode = (cb: () => void) => {
 
 export function MapShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const mapMode = useSyncExternalStore(subscribeMode, () => location.hash === "#map", () => false);
-  const dashboard = pathname === "/" && !mapMode;
+  const homeMode = useSyncExternalStore(subscribeMode, () => location.hash === "#home", () => false);
+  const dashboard = pathname === "/" && homeMode;
+  const mapMode = !dashboard;
   // Server and hydration render the desktop layout; phones switch right after hydration (under the splash).
   const mobile = useSyncExternalStore(
     subscribePhone,
@@ -67,7 +69,7 @@ export function MapShell({ children }: { children: React.ReactNode }) {
       <CityHeader mapMode={mapMode} />
       {!dashboard && <MapWorkspace className="bottom-12 md:top-[72px] md:bottom-0 md:left-0" />}
       {dashboard ? <main className="city-dashboard">{page}</main> : isMapPath(pathname) ? (
-        <PanelSheet mobile={mobile}>{pathname === "/" ? <CityMapPanel /> : page}</PanelSheet>
+        <PanelSheet mobile={mobile}>{pathname === "/" ? <CityMapPanel /> : page}<AnalyticsPanel /></PanelSheet>
       ) : (
         <FlowOverlay mobile={mobile}>{page}</FlowOverlay>
       )}

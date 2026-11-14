@@ -23,7 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(CABINET_SYNC_FAILED, onFail);
   }, []);
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
       <MotionConfig reducedMotion="user">
         {children}
         <Toaster />
