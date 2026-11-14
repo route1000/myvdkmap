@@ -22,3 +22,5 @@ backups/
 .DS_Store
 playwright-report/
 test-results/
+
+generated/
