@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node --import ./scripts/sites-env.mjs ./node_modules/vinext/dist/cli.js dev",
+    "build": "node --import ./scripts/sites-env.mjs ./node_modules/vinext/dist/cli.js build",
+    "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "preview": "next build && next start",
     "lint": "eslint",
     "setup": "prisma db push && node scripts/fetch-geo.mjs && prisma db seed",
@@ -16,13 +16,17 @@
     "postinstall": "prisma generate",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test lib/*.test.ts lib/ai/*.test.ts components/map/shapes.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev:node": "next dev",
+    "build:node": "next build",
+    "db:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --persist-to .wrangler/state --file drizzle/0000_initial.sql"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@2gis/mapgl": "^1.81.0",
+    "@prisma/adapter-d1": "^6.19.3",
     "@prisma/client": "^6.19.3",
     "@turf/turf": "^7.4.0",
     "class-variance-authority": "^0.7.1",
@@ -43,6 +47,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.37.1",
+    "@cloudflare/workers-types": "^4.20260515.1",
     "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
@@ -50,11 +56,18 @@
     "@types/node": "^20.19.43",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-rsc": "^0.5.26",
     "eslint": "^9.39.5",
     "eslint-config-next": "~15.5",
     "prisma": "^6.19.3",
+    "react-server-dom-webpack": "^19.3.1",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
-  }
+    "typescript": "^5.9.3",
+    "vinext": "^1.0.0-beta.5",
+    "vite": "^8.0.13",
+    "wrangler": "^4.92.0"
+  },
+  "type": "module"
 }

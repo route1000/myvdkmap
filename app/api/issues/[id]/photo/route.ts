@@ -1,3 +1,4 @@
+import { readStoredPhoto } from "@/lib/storage";
 import { prisma } from "@/lib/db";
 import { apiError, serverError } from "@/lib/ai/http";
 
@@ -6,6 +7,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   try {
     const { id } = await params;
     const row = await prisma.issue.findUnique({ where: { id }, select: { photoUrl: true } });
+    if (row?.photoUrl?.startsWith("r2:")) return await readStoredPhoto(row.photoUrl) ?? apiError(404, "Фото не найдено");
     const m = /^data:(image\/(?:jpeg|png|gif|webp|heic|avif));base64,([\w+/=]*)$/.exec(row?.photoUrl ?? "");
     if (!m) return apiError(404, "Фото не найдено");
     return new Response(Buffer.from(m[2], "base64"), {

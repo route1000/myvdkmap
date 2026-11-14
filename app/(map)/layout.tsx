@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import geoData from "@/public/geo/districts.geojson.json";
 import { MapProvider } from "@/components/map/MapContext";
 import { buildShapes, type DistrictGeo, type DistrictPlace } from "@/components/map/shapes";
 import { MapShell } from "@/components/map/MapShell";
@@ -36,7 +35,7 @@ export default async function MapLayout({ children }: { children: React.ReactNod
     getMapComplexes(),
     getIssues(),
     getCityWorks(),
-    (geoFile ??= readFile(join(process.cwd(), "public/geo/districts.geojson"), "utf8").then((s) => JSON.parse(s) as DistrictGeo)),
+    (geoFile ??= Promise.resolve(geoData as unknown as DistrictGeo)),
   ]);
   const open = issues.filter((i) => i.status !== "resolved").map(forMap);
   return (

@@ -1,7 +1,8 @@
 // Everything about addresses (§4, §6.2–6.4). Server only: reads prepared files from disk.
 // queries.ts imports from here, never the reverse.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import pointsData from "@/data/osm-address-points.json";
+import addressesData from "@/data/osm-addresses.json";
+import districtsData from "@/public/geo/districts.geojson.json";
 import { bbox, booleanPointInPolygon, point } from "@turf/turf";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { prisma } from "@/lib/db";
@@ -12,7 +13,8 @@ import { norm } from "@/lib/utils";
 type AddressPoint = [osmId: number, street: string, number: string, lat: number, lng: number, floors: number | null];
 type DistrictFeature = Feature<Polygon | MultiPolygon, { id: string; name: string }>;
 
-const readJson = <T>(path: string): T => JSON.parse(readFileSync(join(process.cwd(), path), "utf8")) as T;
+const inputs: Record<string, unknown> = { "data/osm-address-points.json":pointsData, "data/osm-addresses.json":addressesData, "public/geo/districts.geojson":districtsData };
+const readJson = <T>(path: string): T => inputs[path] as T;
 const words = (s: string) => norm(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 
 const ruCollator = new Intl.Collator("ru");

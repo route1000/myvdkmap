@@ -4,7 +4,7 @@ import { hashPassword, LoginSchema, RegisterSchema, verifyPassword } from "./aut
 
 async function main() {
   const stored = await hashPassword("секретный-пароль");
-  assert.match(stored, /^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/, "format scrypt$<salt>$<hash>");
+  assert.match(stored, /^pbkdf2\$100000\$[0-9a-f]{32}\$[0-9a-f]{64}$/, "format pbkdf2$<iterations>$<salt>$<hash>");
   assert.notEqual(await hashPassword("секретный-пароль"), stored, "salt is random");
   assert.equal(await verifyPassword("секретный-пароль", stored), true);
   assert.equal(await verifyPassword("секретный-парол", stored), false, "wrong password");

@@ -4,6 +4,7 @@ import { apiError, parseBody, serverError } from "@/lib/ai/http";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getIssues, toIssueDTO } from "@/lib/queries";
+import { savePhoto, deletePhoto } from "@/lib/storage";
 import { safePhoto } from "@/lib/photo";
 import { ensureOsmBuilding } from "@/lib/search";
 import { ISSUE_CATEGORIES, ISSUE_KINDS } from "@/lib/types";
@@ -42,6 +43,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  let storedPhoto: string | null = null;
   try {
     const limited = rateLimit(req, "issue", 20, 60);
     if (limited) return limited;
@@ -59,13 +61,15 @@ export async function POST(req: Request) {
       return apiError(400, "Проверьте данные", [{ path: "authorityId", message: "Такого ответственного нет в справочнике" }]);
     }
 
+    storedPhoto = body.photoUrl ? await savePhoto(body.photoUrl) : null;
     const row = await prisma.issue.create({
-      data: { ...body, buildingId, photoUrl: body.photoUrl ?? null, authorId: (await currentUser())?.id ?? null },
+      data: { ...body, buildingId, photoUrl: storedPhoto, authorId: (await currentUser())?.id ?? null },
       include: { building: { select: { address: true } } },
     });
     const { building, ...issue } = row;
     return NextResponse.json(toIssueDTO(issue, building?.address), { status: 201 });
   } catch (e) {
+    if (storedPhoto) await deletePhoto(storedPhoto).catch(() => {});
     return serverError(e);
   }
 }

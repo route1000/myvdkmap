@@ -1,0 +1,9 @@
+{
+  "name":"myvdkmap-discovery",
+  "main":"worker/index.ts",
+  "compatibility_date":"2026-04-01",
+  "compatibility_flags":["nodejs_compat"],
+  "assets":{"directory":"dist/client","binding":"ASSETS"},
+  "d1_databases":[{"binding":"DB","database_name":"myvdkmap","database_id":"local-my-vdk-map","migrations_dir":"drizzle"}],
+  "r2_buckets":[{"binding":"BUCKET","bucket_name":"myvdkmap-photos"}]
+}

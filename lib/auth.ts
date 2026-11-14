@@ -23,18 +23,29 @@ export const RegisterSchema = z.object({ email, password: PasswordSchema, name: 
 export const LoginSchema = z.object({ email, password: z.string({ error: "Укажите пароль" }).min(1, "Укажите пароль").max(200) });
 
 // --- passwords ---
+const ITERATIONS = 100_000;
+async function derivePassword(password: string, salt: string, iterations: number) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations }, key, 256);
+  return Buffer.from(bits);
+}
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const hash = await scryptAsync(password, salt, KEY_LENGTH);
-  return `scrypt$${salt}$${hash.toString("hex")}`;
+  const hash = await derivePassword(password, salt, ITERATIONS);
+  return `pbkdf2$${ITERATIONS}$${salt}$${hash.toString("hex")}`;
 }
-
 export async function verifyPassword(password: string, stored: string) {
-  const [scheme, salt, hex] = stored.split("$");
-  if (scheme !== "scrypt" || !salt || !hex) return false;
-  const expected = Buffer.from(hex, "hex");
-  if (expected.length !== KEY_LENGTH) return false;
-  return timingSafeEqual(expected, await scryptAsync(password, salt, KEY_LENGTH));
+  const parts = stored.split("$");
+  if (parts[0] === "pbkdf2") {
+    const [, rounds, salt, hex] = parts;
+    if (Number(rounds) !== ITERATIONS || !/^[a-f0-9]{32}$/.test(salt ?? "") || !/^[a-f0-9]{64}$/.test(hex ?? "")) return false;
+    return timingSafeEqual(Buffer.from(hex, "hex"), await derivePassword(password, salt, ITERATIONS));
+  }
+  // Existing Node installations can still verify their original scrypt hashes.
+  const [scheme, salt, hex] = parts;
+  if (scheme !== "scrypt" || !/^[a-f0-9]{32}$/.test(salt ?? "") || !/^[a-f0-9]{128}$/.test(hex ?? "")) return false;
+  try { return timingSafeEqual(Buffer.from(hex, "hex"), await scryptAsync(password, salt, KEY_LENGTH)); }
+  catch { return false; }
 }
 
 // --- sessions ---

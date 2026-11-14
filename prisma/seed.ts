@@ -1,6 +1,7 @@
 // Deterministic seed (§3.3): same inputs + same salt → same rows. Run: `npx prisma db seed`.
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { booleanPointInPolygon, point } from "@turf/turf";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { prisma } from "@/lib/db";
@@ -39,7 +40,7 @@ const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rnd() * xs.length)];
 const r6 = (n: number) => Math.round(n * 1e6) / 1e6;
 
 // --- inputs ---
-const root = join(__dirname, "..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(join(root, p), "utf8")) as T;
 
 interface SeedJson {
@@ -443,6 +444,10 @@ async function updateWorks() {
 }
 
 async function main() {
+  if (await prisma.district.count()) {
+    console.log("Seed skipped: database already contains data. User records preserved.");
+    return;
+  }
   await prisma.$transaction([
     prisma.cityWorkImpact.deleteMany(),
     prisma.cityWork.deleteMany(),
