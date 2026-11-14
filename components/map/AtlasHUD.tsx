@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronDown, X, ArrowUpRight, BarChart3 } from "lucide-react";
 import { Popover,PopoverContent,PopoverTrigger } from "@/components/ui/popover";
 import { useMap } from "./MapContext";
@@ -14,12 +15,12 @@ export function MetricMenu() {
   <PopoverContent align="end" className="atlas-menu w-64"><p>Что показывает цвет</p><div className="atlas-metric-list">{[...INFRA_METRICS,"outages","none"].map(key=><button key={key} aria-pressed={metric===key} onClick={()=>{setMetric(key as AtlasMetric);setOpen(false);}}><span>{METRIC_LABELS[key as AtlasMetric]}</span>{metric===key&&<span>✓</span>}</button>)}</div></PopoverContent></Popover></div>;
 }
 export function AtlasHUD() {
- const {metric,selected,setSelected,districts,setAnalyticsOpen}=useMap();const meta=useAtlasManifest();
+ const {metric,selected,setSelected,districts,setAnalyticsOpen}=useMap();const meta=useAtlasManifest();const root=usePathname()==="/";
  const histogram=metric!=="none"&&metric!=="outages"?meta?.infra.histograms[metric]:null;
  const high=Math.max(1,...(histogram??[]));const value=selected?Number(selected[metric]??-1):-1;
  return <>
-  <div className="atlas-district-selector"><Popover><PopoverTrigger asChild><button className="atlas-tool">Районы <ChevronDown size={12}/></button></PopoverTrigger><PopoverContent align="start" className="atlas-menu w-72"><p>Инфраструктура · средний балл</p>{districts.map(d=>{const score=meta?.infra.districts.find(x=>x.name===`${d.name} район`)?.score;return <Link className="atlas-district-row" href={districtHref(d.id)} key={d.id}><span>{d.name}</span><b>{score??'—'}</b><ArrowUpRight size={12}/></Link>;})}</PopoverContent></Popover></div>
-  {!selected&&metric!=="none"&&<section className="atlas-index-card" aria-label="Индекс на карте"><span className="atlas-eyebrow">ВЛАДИВОСТОК / ИНДЕКС</span><h1>{METRIC_LABELS[metric]}</h1><p>{metric==='outages'?'Надёжность коммунальных сетей':'Что доступно рядом с домом'}</p>
+  {root&&<div className="atlas-district-selector"><Popover><PopoverTrigger asChild><button className="atlas-tool">Районы <ChevronDown size={12}/></button></PopoverTrigger><PopoverContent align="start" className="atlas-menu w-72"><p>Инфраструктура · средний балл</p>{districts.map(d=>{const score=meta?.infra.districts.find(x=>x.name===`${d.name} район`)?.score;return <Link className="atlas-district-row" href={districtHref(d.id)} key={d.id}><span>{d.name}</span><b>{score??'—'}</b><ArrowUpRight size={12}/></Link>;})}</PopoverContent></Popover></div>}
+  {root&&!selected&&metric!=="none"&&<section className="atlas-index-card" aria-label="Индекс на карте"><span className="atlas-eyebrow">ВЛАДИВОСТОК / ИНДЕКС</span><h1>{METRIC_LABELS[metric]}</h1><p>{metric==='outages'?'Надёжность коммунальных сетей':'Что доступно рядом с домом'}</p>
    {histogram&&<div className="atlas-histogram" role="img" aria-label="Распределение домов по баллам по всему городу">{histogram.map((n,i)=><span key={i} style={{height:`${6+Math.sqrt(n/high)*48}px`,opacity:.3+i/histogram.length*.7}} title={`${Math.round(i/histogram.length*100)}–${Math.round((i+1)/histogram.length*100)} баллов: ${n} домов`}/>)}</div>}
    <div className="atlas-index-caption"><span>{meta?(metric==='outages'?meta.outages.counts.houses:meta.infra.counts.houses).toLocaleString('ru-RU'):'…'} домов</span><button onClick={()=>setAnalyticsOpen(true)} aria-label="Открыть подробную аналитику"><BarChart3 size={14}/> Подробнее</button></div>
   </section>}
