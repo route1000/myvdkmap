@@ -10,14 +10,14 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { useFontScale } from "@/components/cabinet/shared";
-import { AnalyticsPanel } from "@/components/analytics/AnalyticsPanel";
+import { AtlasAnalytics } from "@/components/analytics/AtlasAnalytics";
 import { CityHeader } from "./CityHeader";
 import { MapWorkspace } from "@/components/map/MapWorkspace";
-import { CityMapPanel } from "@/components/panel/CityMapPanel";
+import { X } from "lucide-react";
 import { PanelSheet } from "@/components/panel/PanelSheet";
 import { useSession } from "@/lib/session";
 import { useMap } from "./MapContext";
-import { isMapPath, NAV_VT, pageShown, TabBar } from "./Rail";
+import { isMapPath, NAV_VT, pageShown } from "./Rail";
 
 const PHONE = "(max-width: 767.98px)";
 const subscribePhone = (cb: () => void) => {
@@ -35,6 +35,11 @@ const subscribeMode = (cb: () => void) => {
 
 export function MapShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { analyticsOpen, setAnalyticsOpen, setInsets, setScene, setSelected } = useMap();
+  useEffect(() => {
+    setSelected(null);
+    if (pathname === "/") { setInsets({top:0,left:0,right:0,bottom:0}); setScene({level:"city"}); }
+  }, [pathname,setInsets,setScene,setSelected]);
   const homeMode = useSyncExternalStore(subscribeMode, () => location.hash === "#home", () => false);
   const dashboard = pathname === "/" && homeMode;
   const mapMode = !dashboard;
@@ -67,13 +72,13 @@ export function MapShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CityHeader mapMode={mapMode} />
-      {!dashboard && <MapWorkspace className="bottom-12 md:top-[72px] md:bottom-0 md:left-0" />}
-      {dashboard ? <main className="city-dashboard">{page}</main> : isMapPath(pathname) ? (
-        <PanelSheet mobile={mobile}>{pathname === "/" ? <CityMapPanel /> : page}<AnalyticsPanel /></PanelSheet>
+      {!dashboard && <MapWorkspace />}
+      {dashboard ? <main className="city-dashboard">{page}</main> : pathname === "/" ? null : isMapPath(pathname) ? (
+        <PanelSheet mobile={mobile}>{page}</PanelSheet>
       ) : (
         <FlowOverlay mobile={mobile}>{page}</FlowOverlay>
       )}
-      <TabBar />
+      {analyticsOpen && <aside className="atlas-analytics-drawer" aria-label="Подробная аналитика"><button className="atlas-close" aria-label="Закрыть аналитику" onClick={() => setAnalyticsOpen(false)}><X size={18}/></button><AtlasAnalytics/></aside>}
     </>
   );
 }
@@ -102,7 +107,7 @@ function FlowOverlay({
       // While the report wizard takes a point (`data-map-pick` on <html>), the sheet steps aside to show the map.
       <section
         aria-label="Раздел"
-        className="fixed inset-x-0 top-0 bottom-12 z-20 overflow-y-auto overscroll-contain bg-background animate-in fade-in slide-in-from-bottom-4 duration-200 [[data-map-pick]_&]:invisible"
+        className="fixed inset-x-0 top-[112px] bottom-0 z-20 overflow-y-auto overscroll-contain bg-background animate-in fade-in slide-in-from-bottom-4 duration-200 [[data-map-pick]_&]:invisible"
       >
         {children}
       </section>

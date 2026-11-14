@@ -5,13 +5,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { animate, motion, useMotionValue } from "framer-motion";
 import { useMap } from "@/components/map/MapContext";
-import { MapControls } from "@/components/map/MapControls";
 
-const TAB_BAR = 48; // h-12 of TabBar (components/map/Rail.tsx)
+const TAB_BAR = 0; // h-12 of TabBar (components/map/Rail.tsx)
 const COLLAPSED = 130;
 // Opened: the title and the first block (district figures, complex facts) over the map.
 const OPENED = 350;
-const TOP_GAP = 64;
+const TOP_GAP = 110;
 // Room for the search and chips over the phone map, so the camera keeps targets visible.
 const MOBILE_TOP = 120;
 const DESKTOP_COLUMN = 16 + 384 + 16;
@@ -42,7 +41,6 @@ export function PanelSheet({
   if (!mobile)
     return (
       <div className="pointer-events-none fixed top-[72px] bottom-0 left-0 z-20 flex w-[416px] flex-col gap-3 p-4">
-        <MapControls mobile={false} />
         <section
           aria-label="Панель"
           className="pointer-events-auto min-h-0 overflow-y-auto overscroll-contain rounded-2xl bg-card shadow-lg ring-1 ring-border"
@@ -53,7 +51,6 @@ export function PanelSheet({
     );
   return (
     <>
-      <MapControls mobile />
       <BottomSheet>{children}</BottomSheet>
     </>
   );

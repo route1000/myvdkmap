@@ -15,6 +15,8 @@ import {
 import { plural } from "@/lib/health";
 import { vlDay } from "@/lib/utils";
 import { useMap } from "./MapContext";
+import { atlasManifest, atlasChunk } from "./atlas-data";
+import { visibleChunks, metricColor, type BuildingProperties } from "@/lib/map-data";
 import { insideDistrict } from "./shapes";
 
 const CENTER: Leaflet.LatLngExpression = [43.156, 131.955];
@@ -23,6 +25,7 @@ const CENTER: Leaflet.LatLngExpression = [43.156, 131.955];
 export default function OpenMap() {
   const state = useMap();
   const router = useRouter();
+  const latest = useRef(state); latest.current = state;
   const { resolvedTheme } = useTheme();
   const node = useRef<HTMLDivElement>(null);
   const [api, setApi] = useState<{
@@ -69,7 +72,7 @@ export default function OpenMap() {
   useEffect(() => {
     if (!api) return;
     api.map.getContainer().classList.toggle("openmap-dark", resolvedTheme === "dark");
-    const tiles = api.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    const tiles = api.L.tileLayer(`https://basemaps.cartocdn.com/${resolvedTheme === "dark" ? "dark_nolabels" : "light_nolabels"}/{z}/{x}/{y}.png`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(api.map);
@@ -79,6 +82,27 @@ export default function OpenMap() {
       tiles.remove();
     };
   }, [api, resolvedTheme]);
+
+  useEffect(() => {
+    if (!api) return;
+    const {L,map}=api;const group=L.layerGroup().addTo(map);const renderer=L.canvas({padding:.25}).addTo(map);
+    let live=true,turn=0;
+    async function draw() {
+      const at=++turn;
+      try {
+        const meta=await atlasManifest();if(!live||at!==turn)return;
+        const b=map.getBounds();const queue=visibleChunks(meta.chunks,{west:b.getWest(),south:b.getSouth(),east:b.getEast(),north:b.getNorth()}).slice(0,24);
+        group.clearLayers();
+        await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
+          for(;;){const c=queue.shift();if(!c)return;const data=await atlasChunk(c.key);if(!live||at!==turn)return;
+            L.geoJSON(data,{style:f=>({renderer,color:resolvedTheme==='dark'?'#29292f':'#a6a6b0',weight:.35,fillOpacity:.95,fillColor:metricColor(Number(f?.properties?.[state.metric]??-1),state.metric,resolvedTheme==='dark')}),
+              onEachFeature:(f,layer)=>{const p=f.properties as BuildingProperties;const label=document.createElement('span');label.textContent=p.address||'Здание';layer.bindTooltip(label);layer.on('click',()=>{if(document.documentElement.dataset.mapPick===undefined)latest.current.setSelected(p);});}}).addTo(group);
+          }
+        }));
+      } catch { /* The base map and navigation remain available; the data source is retried on a later move. */ }
+    }
+    draw();map.on('moveend',draw);return()=>{live=false;turn++;map.off('moveend',draw);group.remove();renderer.remove();};
+  },[api,state.metric,resolvedTheme]);
 
   const { districts, shapes, scene, layers, complexes, issues, works, insets, health } =
     state;
@@ -125,24 +149,24 @@ export default function OpenMap() {
         const chosen = scene.districtId === d.id;
         const geo = L.geoJSON(shape.feature, {
           style: {
-            color: d.color,
+            color: resolvedTheme === "dark" ? "#666672" : "#aaaab4",
             weight: chosen ? 2.5 : 1.5,
-            fillColor: d.color,
-            fillOpacity: scene.level === "city" ? 0.13 : chosen ? 0.045 : 0.08,
+            fillColor: "transparent",
+            fillOpacity: 0,
           },
         }).addTo(group);
         geo.on("mouseover", () =>
-          geo.setStyle({ fillOpacity: 0.25, weight: 2.5 }),
+          geo.setStyle({ fillOpacity: 0, weight: 2.5 }),
         );
         geo.on("mouseout", () =>
           geo.setStyle({
-            fillOpacity: scene.level === "city" ? 0.13 : chosen ? 0.045 : 0.08,
+            fillOpacity: 0,
             weight: chosen ? 2.5 : 1.5,
           }),
         );
         geo.on("click", () => navigate(districtHref(d.id)));
       }
-      if (scene.level === "city" || scene.districtId === d.id) {
+      if (scene.level !== "city" && scene.districtId === d.id) {
         const el = document.createElement("div");
         el.className = "openmap-label";
         el.style.borderLeft = `3px solid ${d.color}`;

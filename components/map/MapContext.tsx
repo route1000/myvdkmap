@@ -2,6 +2,7 @@
 
 // Map state shared by the map, the shell and the pages (§4): data, scene, layers, camera insets.
 import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import type { AtlasMetric, BuildingProperties } from "@/lib/map-data";
 import type { CityWorkDTO, DistrictWithCountsDTO, IssueDTO, MapComplexDTO, MapIssueDTO } from "@/lib/types";
 import { featureParts, type DistrictGeo, type DistrictPlace, type DistrictShape } from "./shapes";
 
@@ -47,6 +48,9 @@ interface MapInsets {
 }
 
 interface MapContextValue {
+  analyticsOpen: boolean; setAnalyticsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  metric: AtlasMetric; setMetric: React.Dispatch<React.SetStateAction<AtlasMetric>>;
+  selected: BuildingProperties | null; setSelected: React.Dispatch<React.SetStateAction<BuildingProperties | null>>;
   districts: DistrictWithCountsDTO[];
   complexes: MapComplexDTO[];
   works: CityWorkDTO[];
@@ -89,8 +93,11 @@ const isOpen = (i: MapIssueDTO) => i.status !== "resolved";
 export function MapProvider({ data, children }: { data: MapData; children: React.ReactNode }) {
   const [issues, setIssues] = useState(data.issues);
   const [scene, setScene] = useState<MapScene>({ level: "city" });
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [metric, setMetric] = useState<AtlasMetric>("infra");
+  const [selected, setSelected] = useState<BuildingProperties | null>(null);
   const [health, setHealth] = useState<HealthMarker[]>([]);
-  const [layers, setLayers] = useState<MapLayers>({ health: false, complexes: true, issues: true, works: true });
+  const [layers, setLayers] = useState<MapLayers>({ health: false, complexes: false, issues: false, works: false });
   const [override, setInsets] = useState<Partial<MapInsets>>({});
   const viewport = useSyncExternalStore(subscribeResize, viewportSnapshot, () => "");
 
@@ -125,6 +132,8 @@ export function MapProvider({ data, children }: { data: MapData; children: React
 
   const value = useMemo<MapContextValue>(
     () => ({
+      analyticsOpen, setAnalyticsOpen,
+      metric, setMetric, selected, setSelected,
       health, setHealth,
       districts: data.districts,
       complexes: data.complexes,
@@ -138,7 +147,7 @@ export function MapProvider({ data, children }: { data: MapData; children: React
       insets,
       setInsets,
     }),
-    [data.districts, data.complexes, data.works, issues, shapes, scene, layers, insets, health],
+    [data.districts, data.complexes, data.works, issues, shapes, scene, layers, insets, health, metric, selected, analyticsOpen],
   );
   return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
 }

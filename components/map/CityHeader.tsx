@@ -1,18 +1,21 @@
 "use client";
 import Link from "next/link";
-import { CityNavLink } from "@/components/map/CityNavLink";
-import { usePathname } from "next/navigation";
-import { Heart, House, UserRound } from "lucide-react";
+import { useState } from "react";
+import { Layers, Menu, UserRound, Map, ArrowUpRight } from "lucide-react";
+import { CityNavLink } from "./CityNavLink";
+import { SearchBox } from "@/components/search/SearchBox";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { FavoritesPopover } from "./FavoritesPopover";
-const links = [
-  {href: "/#home", label: "Обзор"},
-  {href: "/#map", label: "Карта города"},
-  {href: "/report", label: "Обращения"},
-  {href: "/bill", label: "Квитанции"},
-  {href: "/changes", label: "Работы"},
-];
-export function CityHeader({mapMode = false}: {mapMode?: boolean}) {
-  const path = usePathname();
-  return <header className="city-header city-header-v3"><CityNavLink href="/" className="city-brand" aria-label="Мой дом — на главную"><span className="brand-symbol"><House size={24}/></span><span><strong>мой дом<span>.</span></strong><small>ВЛАДИВОСТОК</small></span></CityNavLink><nav aria-label="Главное меню" className="header-navigation">{links.map(l=><CityNavLink key={l.href} href={l.href} className={`header-link ${l.href === "/#map" ? (mapMode || path.startsWith('/d/') || path.startsWith('/house/') || path.startsWith('/issue/') ? 'is-active' : '') : l.href === '/#home' ? (path==='/' && !mapMode ? 'is-active' : '') : path.startsWith(l.href) ? 'is-active' : ''}`}>{l.label}</CityNavLink>)}</nav><div className="header-tools"><FavoritesPopover side="bottom" align="end"><button className="header-icon" aria-label="Мои дома"><Heart size={20}/></button></FavoritesPopover><ThemeToggle className="header-theme"/><Link href="/me" className="header-account"><UserRound size={18}/><span>Мой кабинет</span></Link></div></header>;
+import { Popover,PopoverContent,PopoverTrigger } from "@/components/ui/popover";
+import { LayersPopover } from "./LayersPopover";
+import { MetricMenu } from "./AtlasHUD";
+import { useMap } from "./MapContext";
+export function CityHeader({mapMode=false}:{mapMode?:boolean}) {
+ const {setAnalyticsOpen}=useMap(); const [menu,setMenu]=useState(false);
+ return <header className={`atlas-header ${mapMode?'':'is-overview'}`}>
+  <div className="atlas-header-left"><CityNavLink className="atlas-brand" href="/" aria-label="Мой дом — карта"><span className="atlas-brand-mark">м.</span><span>мой дом<small>ВЛАДИВОСТОК</small></span></CityNavLink>{mapMode&&<SearchBox className="atlas-header-search"/>}</div>
+  <nav className="atlas-header-right" aria-label="Главное меню">{mapMode?<><MetricMenu/><LayersPopover side="bottom" align="end"><button className="atlas-tool atlas-square" aria-label="Слои карты"><Layers size={17}/></button></LayersPopover></>:<CityNavLink href="/#map" className="atlas-tool"><Map size={16}/> Карта <ArrowUpRight size={14}/></CityNavLink>}
+   <Popover open={menu} onOpenChange={setMenu}><PopoverTrigger asChild><button className="atlas-tool atlas-square" aria-label="Открыть сервисы"><Menu size={18}/></button></PopoverTrigger><PopoverContent align="end" className="atlas-menu w-60" onClick={()=>setMenu(false)}><p>Мой дом · Владивосток</p><CityNavLink href="/#home">О проекте</CityNavLink><CityNavLink href="/#map">Карта города</CityNavLink><button onClick={()=>setAnalyticsOpen(true)}>Аналитика</button><Link href="/report">Сообщить о проблеме</Link><Link href="/bill">Разобрать квитанцию</Link><Link href="/changes">Работы и отключения</Link><Link href="/me">Мои дома и кабинет</Link></PopoverContent></Popover>
+   <ThemeToggle className="atlas-tool atlas-square"/><Link href="/me" aria-label="Личный кабинет" className="atlas-tool atlas-square"><UserRound size={18}/></Link>
+  </nav>
+ </header>;
 }
