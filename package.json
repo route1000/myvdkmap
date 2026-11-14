@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node --import ./scripts/sites-env.mjs ./node_modules/vinext/dist/cli.js dev",
+    "dev": "node --import ./scripts/sites-env.mjs ./node_modules/vite/bin/vite.js",
     "build": "node --import ./scripts/sites-env.mjs ./node_modules/vinext/dist/cli.js build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "preview": "next build && next start",

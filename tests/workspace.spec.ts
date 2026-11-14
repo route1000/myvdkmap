@@ -25,7 +25,7 @@ test("fallback map keeps districts navigable when the vendor is unavailable", as
 test("keyboard search navigates to a house and reload preserves its address", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/#home");
   const search = page.getByRole("combobox");
   await search.fill("Нейбута 2А");
   await expect(page.getByRole("option").first()).toBeVisible();
@@ -57,7 +57,7 @@ test("old search results cannot be selected while the new request is pending", a
       await new Promise((resolve) => setTimeout(resolve, 900));
     await route.continue();
   });
-  await page.goto("/");
+  await page.goto("/#home");
   const search = page.getByRole("combobox");
   await search.fill("Нейбута");
   await expect(page.getByRole("option").first()).toBeVisible();
@@ -102,7 +102,7 @@ for (const width of [375, 768]) {
         .getByRole("button", { name: "Развернуть панель" })
         .press("Enter");
       await expect(
-        page.getByRole("heading", { name: "Ваш город на ладони." }),
+        page.getByRole("heading", { name: "Город.Изнутри." }),
       ).toBeVisible();
     }
   });
@@ -138,17 +138,17 @@ test("direct section links reload correctly and cross-site API writes stay block
 
 
 test("dashboard opens map mode and returns to the home screen", async ({page}) => {
-  await page.goto("/");
+  await page.goto("/#home");
   await expect(page.getByRole("heading", {level:1})).toContainText("ГОРОД.");
   await page.getByRole("link", {name: "Открыть карту", exact:true}).click();
   await expect(page).toHaveURL(/#map$/);
-  await expect(page.getByRole("heading", {level:1})).toContainText("Ваш город");
+  await expect(page.getByRole("heading", {level:1})).toContainText("Город.");
   await page.getByRole("link", {name: "На главную", exact:true}).click();
   await expect(page.getByRole("heading", {level:1})).toContainText("ГОРОД.");
 });
 
 test("district discovery handles empty filters and can recover", async ({page}) => {
-  await page.goto("/");
+  await page.goto("/#home");
   await page.getByRole("textbox", {name:"Найти район", exact:true}).fill("неизвестный");
   await expect(page.getByText("Такого района не нашли.", {exact:false})).toBeVisible();
   await page.getByRole("button", {name:"Показать все районы", exact:true}).click();
@@ -157,7 +157,7 @@ test("district discovery handles empty filters and can recover", async ({page}) 
 
 
 test("interactive city explorer selects a district and links to its page", async ({page}) => {
-  await page.goto("/");
+  await page.goto("/#home");
   await page.getByRole("group", {name:"Выбор района"}).getByRole("button", {name:"Советский",exact:true}).click();
   const selected = page.locator(".explorer-detail");
   await expect(selected.getByRole("link")).toContainText("Советский");
@@ -167,7 +167,7 @@ test("interactive city explorer selects a district and links to its page", async
 
 test("motion can be paused without hiding the content", async ({page}) => {
   await page.emulateMedia({reducedMotion:"no-preference"});
-  await page.goto("/");
+  await page.goto("/#home");
   await page.getByRole("button", {name:"Остановить анимации",exact:true}).click();
   await expect(page.getByRole("button", {name:"Включить анимации",exact:true})).toHaveAttribute("aria-pressed","false");
   await expect(page.getByRole("heading", {level:1})).toBeVisible();
