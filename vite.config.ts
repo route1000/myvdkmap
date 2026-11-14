@@ -4,7 +4,15 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import { fileURLToPath } from "node:url";
 const local = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 export default defineConfig({
-  plugins: [vinext(), cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } })],
+  plugins: [{
+    name: "myvdkmap-worker-storage",
+    enforce: "pre",
+    load(id) {
+      for (const name of ["db", "storage", "vote-store"]) {
+        if (id === local(`./lib/${name}.ts`)) return `export * from ${JSON.stringify(local(`./lib/${name}-worker.ts`))};`;
+      }
+    },
+  }, vinext(), cloudflare({ viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] } })],
   resolve: { alias: [
     { find: "@/lib/db", replacement: local("./lib/db-worker.ts") },
     { find: "@/lib/storage", replacement: local("./lib/storage-worker.ts") },
