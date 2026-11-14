@@ -72,15 +72,12 @@ export default function OpenMap() {
   useEffect(() => {
     if (!api) return;
     api.map.getContainer().classList.toggle("openmap-dark", resolvedTheme === "dark");
-    const tiles = api.L.tileLayer(`https://basemaps.cartocdn.com/${resolvedTheme === "dark" ? "dark_nolabels" : "light_nolabels"}/{z}/{x}/{y}.png`, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(api.map);
-    tiles.on("tileerror", () => setTileError(true));
-    tiles.on("tileload", () => setTileError(false));
-    return () => {
-      tiles.remove();
-    };
+    let live=true;let base:Leaflet.GeoJSON|undefined;
+    fetch('/geo/inside/base.geojson').then(r=>{if(!r.ok)throw new Error('Base map failed');return r.json();}).then(data=>{
+      if(!live)return;const dark=resolvedTheme==='dark';base=api.L.geoJSON(data,{interactive:false,style:f=>({pane:'tilePane',fillOpacity:1,color:f?.properties.kind==='bridge'?(dark?'#85868d':'#b5b7bf'):(dark?'#65666e':'#ffffff'),weight:f?.properties.kind==='road'?.8:1.6,stroke:['road','bridge'].includes(f?.properties.kind),fillColor:f?.properties.kind==='water'?(dark?'#15161a':'#e3e5e9'):(dark?'#25262b':'#f1f2f4')})}).addTo(api.map);
+    }).catch(()=>setTileError(true));
+    return()=>{live=false;base?.remove();};
+
   }, [api, resolvedTheme]);
 
   useEffect(() => {

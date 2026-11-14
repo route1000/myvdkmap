@@ -12,3 +12,6 @@ function walk(dir) {
 }
 walk(root);
 console.log('Worker compatibility: no native SQLite engine bundled');
+
+if (!existsSync('dist/client/vendor/maplibre-gl.worker.mjs')) throw new Error('MapLibre browser worker is missing from the published assets');
+console.log('Map assets: standalone browser worker packaged');

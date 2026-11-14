@@ -6,7 +6,7 @@
     "dev": "node --import ./scripts/sites-env.mjs ./node_modules/vite/bin/vite.js",
     "build": "node --import ./scripts/sites-env.mjs ./node_modules/vinext/dist/cli.js build && node scripts/check-worker.mjs",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
-    "preview": "next build && next start",
+    "preview": "npm run build:node && next start",
     "lint": "eslint",
     "setup": "prisma db push && node scripts/fetch-geo.mjs && prisma db seed",
     "seed": "prisma db seed",
@@ -19,7 +19,11 @@
     "test:e2e": "playwright test",
     "dev:node": "next dev",
     "build:node": "next build",
-    "db:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --persist-to .wrangler/state --file drizzle/0000_initial.sql"
+    "db:local": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --persist-to .wrangler/state --file drizzle/0000_initial.sql",
+    "predev": "node scripts/prepare-map-assets.mjs",
+    "prebuild": "node scripts/prepare-map-assets.mjs",
+    "predev:node": "node scripts/prepare-map-assets.mjs",
+    "prebuild:node": "node scripts/prepare-map-assets.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

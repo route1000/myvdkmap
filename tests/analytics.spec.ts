@@ -18,3 +18,8 @@ test('demo analytics API validates scope and periods',async({request})=>{
  expect((await request.get('/api/analytics?from=2026-11&to=2026-10')).status()).toBe(400);
  expect((await request.get('/api/analytics?district=missing')).status()).toBe(404);
 });
+
+test('published map worker is served as JavaScript',async({request})=>{
+ const r=await request.get('/vendor/maplibre-gl.worker.mjs');expect(r.ok()).toBe(true);
+ expect(r.headers()['content-type']).toMatch(/javascript/);expect((await r.text()).slice(0,300)).toContain('MapLibre');
+});

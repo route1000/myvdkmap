@@ -15,7 +15,8 @@ export default function AtlasMap() {
  const current=useRef(ctx);current.current=ctx;
  const theme=useRef(resolvedTheme);theme.current=resolvedTheme;
  const node=useRef<HTMLDivElement>(null);const mapRef=useRef<GLMap|null>(null);
- const [ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[threeD,setThreeD]=useState(true),[relief,setRelief]=useState(true);
+ const [drawn,setDrawn]=useState(false);
+ const [ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[threeD,setThreeD]=useState(true),[relief,setRelief]=useState(false);
  const [progress,setProgress]=useState({loaded:0,total:0}),[dataError,setDataError]=useState(false),[retry,setRetry]=useState(0);
  const loaded=useRef(new Set<string>());const generation=useRef(0);const manifest=useRef<AtlasManifest|null>(null);
  const [mapCenter,setMapCenter]=useState("43.1370° N  131.9100° E");
@@ -35,21 +36,26 @@ export default function AtlasMap() {
   if(!node.current)return;let live=true;
   import("maplibre-gl").then(GL=>{
    if(!live||!node.current)return;
+   GL.setWorkerUrl(`/vendor/maplibre-gl.worker.mjs?v=${GL.getVersion()}`);
    const dark=theme.current==="dark";
    let map:GLMap;
    try {
     map=new GL.Map({container:node.current,center:[131.91,43.137],zoom:12.6,pitch:48,bearing:-24,minZoom:10,maxZoom:19,attributionControl:false,
      maxBounds:[[131.65,42.95],[132.4,43.42]],
-     style:{version:8,sources:{base:{type:"raster",tiles:[`https://basemaps.cartocdn.com/${dark?"dark_nolabels":"light_nolabels"}/{z}/{x}/{y}.png`],tileSize:256,attribution:"© OpenStreetMap © CARTO"},
+     style:{version:8,sources:{base:{type:"geojson",data:{type:"FeatureCollection",features:[]}},
       terrain:{type:"raster-dem",tiles:["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],tileSize:256,encoding:"terrarium",maxzoom:12}},
-      layers:[{id:"ground",type:"background",paint:{"background-color":dark?"#17181b":"#e9eaec"}},{id:"basemap",type:"raster",source:"base",paint:{"raster-saturation":-1,"raster-opacity":.8}}]},
+      layers:[{id:"ground",type:"background",paint:{"background-color":dark?"#15161a":"#e3e5e9"}},
+       {id:"land",type:"fill",source:"base",filter:["==",["get","kind"],"land"],paint:{"fill-color":dark?"#25262b":"#f1f2f4"}},
+       {id:"water",type:"fill",source:"base",filter:["==",["get","kind"],"water"],paint:{"fill-color":dark?"#15161a":"#e3e5e9"}},
+       {id:"roads",type:"line",source:"base",filter:["==",["get","kind"],"road"],paint:{"line-color":dark?"#65666e":"#ffffff","line-width":["interpolate",["linear"],["zoom"],10,.4,16,2.4],"line-opacity":.7}},
+       {id:"bridges",type:"line",source:"base",filter:["==",["get","kind"],"bridge"],paint:{"line-color":dark?"#85868d":"#b5b7bf","line-width":["interpolate",["linear"],["zoom"],10,1,16,4]}}]},
      canvasContextAttributes:{antialias:true},fadeDuration:150});
    } catch {setFallback(true);window.dispatchEvent(new Event('map:ready'));return;}
    mapRef.current=map;
    const hover=new GL.Popup({closeButton:false,closeOnClick:false,offset:12});
    map.on('mouseout',()=>hover.remove());
    map.on('load',()=>{
-    if(!live)return;map.setTerrain({source:'terrain',exaggeration:1.15});setReady(true);window.dispatchEvent(new Event('map:ready'));
+    if(!live)return;fetch('/geo/inside/base.geojson').then(r=>{if(!r.ok)throw new Error('Base map failed');return r.json();}).then(data=>{if(live)(map.getSource('base') as GeoJSONSource).setData(data);}).catch(()=>setDataError(true));setReady(true);window.dispatchEvent(new Event('map:ready'));
     map.addSource('events',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map.addLayer({id:'atlas-events',type:'circle',source:'events',paint:{'circle-radius':6,'circle-color':['get','color'],'circle-stroke-color':dark?'#171719':'#ffffff','circle-stroke-width':2}});
     map.on('click',e=>{
@@ -69,7 +75,9 @@ export default function AtlasMap() {
      if(hit&&!picking){const p=hit.properties,value=Number(p[current.current.metric]??-1);hover.setLngLat(e.lngLat).setText(`${p.address||p.label||'Здание'}${current.current.metric==='none'?'':value>=0?` · ${Math.round(value)}/100`:' · нет данных'}`).addTo(map);}else hover.remove();
     });
    });
-   map.on('error',e=>{ if(!map.loaded() && /WebGL|context|GPU/i.test(e.error?.message??''))setFallback(true); });
+   map.on('error',e=>{ if(/Worker failed to load|worker.*load|WebGL|context.*lost|GPU/i.test(e.error?.message??''))setFallback(true); });
+   const rendered=()=>{if(loaded.current.size&&[...loaded.current].every(k=>!!map.getSource(k)&&map.isSourceLoaded(k)))setDrawn(true);};
+   map.on('sourcedata',rendered);map.on('idle',rendered);
    map.on('moveend',()=>{const c=map.getCenter();setMapCenter(`${c.lat.toFixed(4)}° N  ${c.lng.toFixed(4)}° E`);});
   }).catch(()=>setFallback(true));
   return()=>{live=false;generation.current++;mapRef.current?.remove();mapRef.current=null;loaded.current.clear();};
@@ -88,6 +96,7 @@ export default function AtlasMap() {
      for(const suffix of ['flat','volume'])if(map!.getLayer(`${key}-${suffix}`))map!.removeLayer(`${key}-${suffix}`);
      if(map!.getSource(key))map!.removeSource(key);loaded.current.delete(key);
     }
+    setDrawn(false);
     setProgress({loaded:chunks.filter(c=>loaded.current.has(c.key)).length,total:chunks.length});setDataError(false);
     const queue=chunks.filter(c=>!loaded.current.has(c.key));
     await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
@@ -109,8 +118,11 @@ export default function AtlasMap() {
  useEffect(()=>{paint();},[ctx.metric,ctx.selected,resolvedTheme,ready]);
  useEffect(()=>{
   const map=mapRef.current;if(!map||!ready)return;const dark=resolvedTheme==='dark';
-  (map.getSource('base') as import('maplibre-gl').RasterTileSource).setTiles([`https://basemaps.cartocdn.com/${dark?'dark_nolabels':'light_nolabels'}/{z}/{x}/{y}.png`]);
-  map.setPaintProperty('ground','background-color',dark?'#17181b':'#e9eaec');
+  map.setPaintProperty('ground','background-color',dark?'#15161a':'#e3e5e9');
+  map.setPaintProperty('land','fill-color',dark?'#25262b':'#f1f2f4');
+  map.setPaintProperty('water','fill-color',dark?'#15161a':'#e3e5e9');
+  map.setPaintProperty('roads','line-color',dark?'#65666e':'#ffffff');
+  map.setPaintProperty('bridges','line-color',dark?'#85868d':'#b5b7bf');
  },[resolvedTheme,ready]);
  useEffect(()=>{
   const map=mapRef.current;if(!map||!ready)return;
@@ -127,6 +139,7 @@ export default function AtlasMap() {
    ...(ctx.layers.works?ctx.works.filter(w=>w.lat!==null&&w.lng!==null).map(w=>({id:w.id,lat:w.lat!,lng:w.lng!,label:w.title,href:workHref(w.id),color:'#c7ac7c'})):[])];
   (map.getSource('events') as GeoJSONSource)?.setData({type:'FeatureCollection',features:features.map(p=>({type:'Feature',geometry:{type:'Point',coordinates:[p.lng,p.lat]},properties:p}))});
  },[ctx.layers,ctx.complexes,ctx.issues,ctx.works,ctx.health,ready]);
+ useEffect(()=>{if(fallback){mapRef.current?.remove();mapRef.current=null;loaded.current.clear();}},[fallback]);
  if(fallback)return <OpenMap/>;
  return <><div ref={node} className="atlas-canvas" aria-label="Объёмная карта Владивостока с окраской зданий"/>
   <div className="atlas-camera" aria-label="Управление картой"><button aria-label="Приблизить" onClick={()=>mapRef.current?.zoomIn()}><Plus size={17}/></button><button aria-label="Отдалить" onClick={()=>mapRef.current?.zoomOut()}><Minus size={17}/></button><span/>
@@ -135,6 +148,6 @@ export default function AtlasMap() {
    <button aria-label="Север сверху" onClick={()=>mapRef.current?.easeTo({bearing:0,duration:500})}><RotateCcw size={16}/></button>
    <button aria-label="Весь город" onClick={()=>{ctx.setSelected(null);mapRef.current?.fitBounds([[131.84,43.057],[132.238,43.289]],{padding:{top:110,bottom:130,left:30,right:30},duration:700,maxZoom:13});router.push('/#map');}}><LocateFixed size={17}/></button></div>
   <div className="atlas-readout">{mapCenter}</div>
-  <div className="atlas-loading" role="status">{dataError?<button onClick={()=>setRetry(v=>v+1)}>Не все здания загрузились · повторить</button>:progress.loaded<progress.total?`Здания · ${progress.loaded} / ${progress.total}`:progress.total?`${METRIC_LABELS[ctx.metric]} · здания загружены`:"Загружаем карту…"}</div>
+  <div className="atlas-loading" role="status">{dataError?<button onClick={()=>setRetry(v=>v+1)}>Не все здания загрузились · повторить</button>:progress.loaded<progress.total?`Здания · ${progress.loaded} / ${progress.total}`:progress.total?(drawn?`${METRIC_LABELS[ctx.metric]} · здания на карте`:"Отрисовываем здания…"):"Загружаем карту…"}</div>
  </>;
 }

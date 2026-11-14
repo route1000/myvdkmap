@@ -18,7 +18,7 @@ assert.equal(m.chunks.reduce((n,c)=>n+c.buildings,0),m.buildings);
 assert.ok(visibleChunks(m.chunks,{west:131.88,south:43.11,east:131.90,north:43.13}).length>0);
 assert.equal(visibleChunks(m.chunks,{west:0,south:0,east:1,north:1}).length,0);
 let count=0,scored=0;
-for(const name of readdirSync('public/geo/inside').filter(p=>p!=='manifest.json')){
+for(const name of readdirSync('public/geo/inside').filter(p=>p.endsWith('.json')&&p!=='manifest.json')){
  const data=JSON.parse(readFileSync(`public/geo/inside/${name}`,'utf8')) as CompactChunk;
  const geo=chunkFeatures(data); count+=geo.features.length;
  for(const f of geo.features){assert.ok(Number.isFinite(f.properties.height));assert.ok(f.properties.height>0);if(Number(f.properties.infra)>=0)scored++;
@@ -26,3 +26,7 @@ for(const name of readdirSync('public/geo/inside').filter(p=>p!=='manifest.json'
 }
 assert.equal(count,m.buildings);assert.ok(scored>15_000);
 console.log(`map data: ${count} building polygons, ${scored} infrastructure scores verified`);
+
+const base=JSON.parse(readFileSync("public/geo/inside/base.geojson","utf8"));
+assert.ok(base.features.some((f:{properties:{kind:string}})=>f.properties.kind==="water"));
+assert.ok(base.features.filter((f:{properties:{kind:string}})=>f.properties.kind==="road").length>3000);

@@ -52,6 +52,18 @@ for key,ts in sorted(chunks.items()):
  index.append({'key':key,'west':sw[0],'south':sw[1],'east':ne[0],'north':ne[1],'buildings':sum(len(t['buildings']) for t in ts)})
 meta={'source':'https://inside-map.mrnikitus.ru/','attribution':'© участники OpenStreetMap · Индексы: Изнанка / Inside Map','generatedAt':m['generated_at'],'infra':infra,'outages':outages,'bbox':m['bbox'],'zoom':m['zoom'],'extent':m['extent'],'chunks':index,'buildings':sum(c['buildings'] for c in index),'addressed':len(points)}
 (outdir/'manifest.json').write_text(json.dumps(meta,ensure_ascii=False,separators=(',',':')))
+# Store the source basemap too: no API-key raster provider is required at runtime.
+overview=fetch('/overview')
+def pairs(values):return [values[i:i+2] for i in range(0,len(values),2)]
+b=overview['bounds']
+features=[{'type':'Feature','properties':{'kind':'land'},'geometry':{'type':'Polygon','coordinates':[[[b['west'],b['south']],[b['east'],b['south']],[b['east'],b['north']],[b['west'],b['north']],[b['west'],b['south']]]]}}]
+for water in overview['water']:
+ ring=pairs(water['ring'])
+ if ring[0]!=ring[-1]:ring.append(ring[0])
+ features.append({'type':'Feature','properties':{'kind':'water'},'geometry':{'type':'Polygon','coordinates':[ring]}})
+for kind in ['roads','bridges']:
+ for road in overview[kind]:features.append({'type':'Feature','properties':{'kind':'bridge' if kind=='bridges' else 'road','class':road['class']},'geometry':{'type':'LineString','coordinates':pairs(road['line'])}})
+(outdir/'base.geojson').write_text(json.dumps({'type':'FeatureCollection','features':features},ensure_ascii=False,separators=(',',':')))
 # Extend the existing OSM passport resolver with public addresses from the same snapshot.
 p=ROOT/'data/osm-address-points.json';old=json.loads(p.read_text());existing={int(v[0]):v for v in old['points']}
 for osm,h in points.items():
