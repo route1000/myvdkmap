@@ -63,7 +63,7 @@ test("old search results cannot be selected while the new request is pending", a
   await expect(page.getByRole("option").first()).toBeVisible();
   await search.fill("Медленный");
   await search.press("Enter");
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(/#home$/);
   await expect(page.getByRole("option")).toHaveCount(0);
   await expect(
     page.getByText("Ничего не нашлось.", { exact: false }),
