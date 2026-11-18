@@ -36,7 +36,7 @@ export function aggregateAnalytics(houses: AnalyticsHouse[], now = new Date(), e
     openIssues: issues.filter(i => i.status !== "resolved").length,
     averageHealth: health.length ? Math.round(health.reduce((n, h) => n + h.score, 0) / health.length) : null,
     categories, statuses, distribution, bills, health,
-    provenance: { source: "Данные myVDKmap · OpenStreetMap и демонстрационные записи", computedAt: now.toISOString(),
+    provenance: { computedAt: now.toISOString(),
       demoHouses: houses.filter(h => h.isDemo).length,
       note: "Оценка по обращениям и возрасту дома, не техническое обследование. Начисления — демонстрационные." } };
 }

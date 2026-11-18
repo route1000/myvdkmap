@@ -50,7 +50,7 @@ const toBillDTO = (b: Bill): BillDTO => ({ ...b, items: JSON.parse(b.items) as B
 const toWorkDTO = (w: CityWork & { impacts: { building: { id: string; address: string } }[] }): CityWorkDTO => ({
   id: w.id,
   title: w.title,
-  sourceText: w.sourceText,
+  sourceText: w.sourceText.replace(/^\s*Источник:[^\r\n]*/gimu, "").trim(),
   plainSummary: w.plainSummary,
   kind: w.kind as WorkKind,
   startDate: w.startDate.toISOString(),

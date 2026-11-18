@@ -10,6 +10,18 @@ import { METRIC_LABELS, visibleChunks,type AtlasManifest,type BuildingProperties
 import { complexHref,issueHref,workHref,houseHref } from "@/lib/nav";
 import OpenMap from "./OpenMap";
 
+function fitPadding(map: GLMap, { top, right, bottom, left }: {
+ top: number; right: number; bottom: number; left: number;
+}) {
+ const { clientWidth: width, clientHeight: height } = map.getCanvas();
+ return {
+  top: Math.min(top, Math.floor(height * .25)),
+  right: Math.min(right, Math.floor(width * .1)),
+  bottom: Math.min(bottom, Math.floor(height * .45)),
+  left: Math.min(left, Math.floor(width * .55)),
+ };
+}
+
 export default function AtlasMap() {
  const ctx=useMap(),router=useRouter(),{resolvedTheme}=useTheme();
  const current=useRef(ctx);current.current=ctx;
@@ -18,6 +30,8 @@ export default function AtlasMap() {
  const [drawn,setDrawn]=useState(false);
  const [ready,setReady]=useState(false),[fallback,setFallback]=useState(false),[threeD,setThreeD]=useState(true),[relief,setRelief]=useState(false);
  const [progress,setProgress]=useState({loaded:0,total:0}),[dataError,setDataError]=useState(false),[retry,setRetry]=useState(0);
+ const [baseError,setBaseError]=useState(false),[baseRetry,setBaseRetry]=useState(0);
+ const [chunksChecked,setChunksChecked]=useState(false);
  const loaded=useRef(new Set<string>());const generation=useRef(0);const manifest=useRef<AtlasManifest|null>(null);
  const [mapCenter,setMapCenter]=useState("43.1370° N  131.9100° E");
  function color():ExpressionSpecification {
@@ -55,7 +69,7 @@ export default function AtlasMap() {
    const hover=new GL.Popup({closeButton:false,closeOnClick:false,offset:12});
    map.on('mouseout',()=>hover.remove());
    map.on('load',()=>{
-    if(!live)return;fetch('/geo/inside/base.geojson').then(r=>{if(!r.ok)throw new Error('Base map failed');return r.json();}).then(data=>{if(live)(map.getSource('base') as GeoJSONSource).setData(data);}).catch(()=>setDataError(true));setReady(true);window.dispatchEvent(new Event('map:ready'));
+    if(!live)return;setReady(true);window.dispatchEvent(new Event('map:ready'));
     map.addSource('events',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map.addLayer({id:'atlas-events',type:'circle',source:'events',paint:{'circle-radius':6,'circle-color':['get','color'],'circle-stroke-color':dark?'#171719':'#ffffff','circle-stroke-width':2}});
     map.on('click',e=>{
@@ -82,6 +96,28 @@ export default function AtlasMap() {
   }).catch(()=>setFallback(true));
   return()=>{live=false;generation.current++;mapRef.current?.remove();mapRef.current=null;loaded.current.clear();};
  },[router]);
+ useEffect(() => {
+  const map = mapRef.current;
+  if (!ready || !map || fallback) return;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  let active = true;
+  setBaseError(false);
+  fetch("/geo/inside/base.geojson", { signal: controller.signal })
+    .then(response => {
+      if (!response.ok) throw new Error(`Basemap: ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      if (data?.type !== "FeatureCollection" || !Array.isArray(data.features)) {
+        throw new Error("Invalid basemap");
+      }
+      if (active) (map.getSource("base") as GeoJSONSource | undefined)?.setData(data);
+    })
+    .catch(() => { if (active) setBaseError(true); })
+    .finally(() => clearTimeout(timer));
+  return () => { active = false; clearTimeout(timer); controller.abort(); };
+ }, [ready, baseRetry, fallback]);
  useEffect(()=>{
   const map=mapRef.current;if(!ready||!map)return;let alive=true;
   async function update() {
@@ -97,7 +133,7 @@ export default function AtlasMap() {
      if(map!.getSource(key))map!.removeSource(key);loaded.current.delete(key);
     }
     setDrawn(false);
-    setProgress({loaded:chunks.filter(c=>loaded.current.has(c.key)).length,total:chunks.length});setDataError(false);
+    setProgress({loaded:chunks.filter(c=>loaded.current.has(c.key)).length,total:chunks.length});setDataError(false);setChunksChecked(true);
     const queue=chunks.filter(c=>!loaded.current.has(c.key));
     await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
      for(;;){const c=queue.shift();if(!c)return;const geo=await atlasChunk(c.key);if(!alive||turn!==generation.current)return;
@@ -126,7 +162,8 @@ export default function AtlasMap() {
  },[resolvedTheme,ready]);
  useEffect(()=>{
   const map=mapRef.current;if(!map||!ready)return;
-  const {scene,shapes,insets}=ctx;const padding={top:90,right:32,bottom:Math.max(80,insets.bottom),left:Math.max(32,insets.left)};
+  const {scene,shapes,insets}=ctx;
+  const padding=fitPadding(map,{top:90,right:32,bottom:Math.max(80,insets.bottom),left:Math.max(32,insets.left)});
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const target=scene.focus??ctx.complexes.find(c=>c.id===scene.complexId)??scene.buildings?.find(b=>b.id===scene.buildingId);
   if(target)map.flyTo({center:[target.lng,target.lat],zoom:scene.level==='house'?17:15.5,padding,duration:reduce?0:850});
@@ -146,8 +183,8 @@ export default function AtlasMap() {
    <button aria-label={threeD?'Плоская карта':'Объёмная карта'} aria-pressed={threeD} onClick={()=>{setThreeD(!threeD);mapRef.current?.easeTo({pitch:threeD?0:48,bearing:threeD?0:-24,duration:500});}}> {threeD?'3D':'2D'} </button>
    <button aria-label="Рельеф" aria-pressed={relief} onClick={()=>{setRelief(!relief);mapRef.current?.setTerrain(relief?null:{source:'terrain',exaggeration:1.15});}}><Mountain size={17}/></button>
    <button aria-label="Север сверху" onClick={()=>mapRef.current?.easeTo({bearing:0,duration:500})}><RotateCcw size={16}/></button>
-   <button aria-label="Весь город" onClick={()=>{ctx.setSelected(null);mapRef.current?.fitBounds([[131.84,43.057],[132.238,43.289]],{padding:{top:110,bottom:130,left:30,right:30},duration:700,maxZoom:13});router.push('/#map');}}><LocateFixed size={17}/></button></div>
+   <button aria-label="Весь город" onClick={()=>{ctx.setSelected(null);const map=mapRef.current;if(map)map.fitBounds([[131.84,43.057],[132.238,43.289]],{padding:fitPadding(map,{top:110,bottom:130,left:30,right:30}),duration:700,maxZoom:13});router.push('/#map');}}><LocateFixed size={17}/></button></div>
   <div className="atlas-readout">{mapCenter}</div>
-  <div className="atlas-loading" role="status">{dataError?<button onClick={()=>setRetry(v=>v+1)}>Не все здания загрузились · повторить</button>:progress.loaded<progress.total?`Здания · ${progress.loaded} / ${progress.total}`:progress.total?(drawn?`${METRIC_LABELS[ctx.metric]} · здания на карте`:"Отрисовываем здания…"):"Загружаем карту…"}</div>
+  <div className="atlas-loading" role="status">{baseError?<button type="button" onClick={()=>setBaseRetry(n=>n+1)}>Подложка недоступна · повторить</button>:dataError?<button onClick={()=>setRetry(v=>v+1)}>Не все здания загрузились · повторить</button>:progress.loaded<progress.total?`Здания · ${progress.loaded} / ${progress.total}`:progress.total?(drawn?`${METRIC_LABELS[ctx.metric]} · здания на карте`:"Отрисовываем здания…"):chunksChecked?"В этой области нет зданий":"Загружаем карту…"}</div>
  </>;
 }
